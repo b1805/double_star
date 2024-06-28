@@ -1,89 +1,43 @@
-class Vector {
-    constructor(x, y) {
-      this.x = x;
-      this.y = y;
-      this.norm = Math.hypot(x, y);
-      this.angle = Math.atan(y / x);
-    }
-  
-    // Returns the dot product with another vector.
-    dot(other) {
-      return this.x * other.x + this.y * other.y;
-    }
-  
-    // Projects this vector onto another vector.
-    projOnto(other) {
-      return other.mult(this.dot(other) / (other.norm * other.norm));
-    }
-  
-    // Returns the angle between this vector and another vector.
-    angle(other) {
-      return Math.acos(this.dot(other) / (this.norm * other.norm));
-    }
-  
-    // Negates this vector.
-    negate() {
-      return new Vector(-this.x, -this.y);
-    }
-  
-    // Adds this vector to another vector.
-    add(other) {
-      return new Vector(this.x + other.x, this.y + other.y);
-    }
-  
-    // Subtracts another vector from this vector.
-    sub(other) {
-      return new Vector(this.x - other.x, this.y - other.y);
-    }
-  
-    // Multiplies this vector by a scalar.
-    mult(scalar) {
-      return new Vector(this.x * scalar, this.y * scalar);
-    }
-}
-  
-// Represents a line segment in 2D space
-//
-class LineSegment {
-    constructor(x1, y1, x2, y2) {
-      this.x1 = x1;
-      this.y1 = y1;
-      this.x2 = x2;
-      this.y2 = y2;
-      this.dx = x2 - x1;
-      this.dy = y2 - y1;
-      this.length = Math.hypot(this.dx, this.dy); // The segment's length.
-      this.normal = new Vector(-this.dy, this.dx); // A surface normal vector.
-      this.normal = this.normal.mult(this.normal.norm);
-      this.lastBounce = -1; // ID of the last reflected wall.
-    }
-}
-  
-// Represents a square region in 2D space.
-//
-// Parameters:
-//   - x: Number, top-left x-coordinate.
-//   - y: Number, top-left y-coordinate.
-//   - 
-class Square {
-    constructor(x, y, size) {
-      this.x = x;
-      this.y = y;
-      this.size = size;
-    }
-    
-    // Returns true if the point (x, y) is in the square
-    contains(x, y) {
-      return (
-        x >= this.x &&
-        x <= this.x + this.size &&
-        y >= this.y &&
-        y <= this.y + this.size
+class Magnifier {
+    constructor(mag, magSide, magView, magViewSide) {
+      this.mag = mag;
+      this.magSide = magSide;
+      this.magView = magView;
+      this.magViewSide = magViewSide;
+      this.magSquare = new Square(
+        mag[0] - magSide / 2,
+        mag[1] - magSide / 2,
+        magSide
       );
+      this.magBox = [
+        [mag[0] - magSide / 2, mag[1] - magSide / 2],
+        [mag[0] - magSide / 2, mag[1] + magSide / 2],
+        [mag[0] + magSide / 2, mag[1] + magSide / 2],
+        [mag[0] + magSide / 2, mag[1] - magSide / 2],
+      ];
+      this.magViewBox = [
+        [magView[0] - magViewSide / 2, magView[1] - magViewSide / 2],
+        [magView[0] - magViewSide / 2, magView[1] + magViewSide / 2],
+        [magView[0] + magViewSide / 2, magView[1] + magViewSide / 2],
+        [magView[0] + magViewSide / 2, magView[1] - magViewSide / 2],
+      ];
+    }
+  
+    // Convert coordinates inside `this.mag` to scaled coordinates inside
+    // `this.magBox`.
+    translate(x, y) {
+      var dx = x - this.mag[0];
+      var dy = y - this.mag[1];
+      return [
+        this.magView[0] + (this.magViewSide / this.magSide) * dx,
+        this.magView[1] + (this.magViewSide / this.magSide) * dy,
+      ];
     }
 }
   
-// Represents a photon (light 'particle' that bounces around the room)
+// Represents a photon (light 'particle' that bounces around the room).
+// This photon class can keep track of its positions relative to two
+// magnifiers.
 //
 // Parameters:
 //   - x: Number, the current x-position.
@@ -91,9 +45,12 @@ class Square {
 //   - dir: Number, the current direction we are travelling in, in radians.
 //   - collisionRadius: Number, the distance at which the centre of the photon
 //                      must be from a line segment for a collision to occur.
+//   - headColor: String, the color of the photon's head.
+//   - tailColor: String, the color of the photon's tail.
+//   - numMags: Number, the number of mags the photon needs to keep track of.
 //
-class Photon {
-    constructor(x, y, dir, speed, collisionRadius, headColor, tailColor) {
+class MultiMagPhoton {
+    constructor(x, y, dir, speed, collisionRadius, headColor, tailColor, numMags) {
       this.x = x;
       this.y = y;
       this.vecDir = new Vector(speed * Math.cos(dir), speed * Math.sin(dir));
@@ -103,8 +60,8 @@ class Photon {
       this.tailColor = tailColor;
       this.contactPoints = new Array();
       this.contactPoints.push([this.x, this.y]);
-      this.magEntry = null;
-      this.lastMagPoint = null;
+      this.magEntry = new Array(numMags).fill(null);
+      this.lastMagPoint = new Array(numMags).fill(null);
       this.active = true;
     }
   
