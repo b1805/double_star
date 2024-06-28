@@ -2,13 +2,6 @@ var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d', { willReadFrequently: true });
 
 const BACKGROUND_COLOR = '#000000';
-// For Testing:
-// const WALL_COLOR = '#39FF14';
-// const MAG_COLOR = '#FFA500';
-// const ORIGIN_COLOR = MAG_COLOR;
-// const PHOTON_HEAD_COLOR = '#E1FF00';
-// const PHOTON_TAIL_COLOR = '#00FFB3';
-
 const PHOTON_HEAD_SIZE = 0.7;
 const PHOTON_TAIL_SIZE = 0.3;
 const NUMBER_TRIANGLES = 6;
