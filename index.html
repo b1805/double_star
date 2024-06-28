@@ -148,8 +148,8 @@ SOFTWARE. -->
               <div>
                   <label for="speedInput">Speed</label>
                   <select id="speedInput">
-                      <option value="16">Slow</option>
-                      <option value="8">Medium</option>
+                      <option value="33">Slow</option>
+                      <option value="16">Medium</option>
                       <option value="0">Fast</option>
                   </select>
                   <button onclick="changeSpeed()">Apply</button>
@@ -189,23 +189,40 @@ SOFTWARE. -->
       <canvas id="canvas" width="1000" height="800"></canvas>
   </div>
   <div class="container">
-      <h2>Recording</h2>
-      <div>
-          <button id="startRecButton" onclick="startRecording()">Start Recording</button>
-          <button id="stopRecButton" onclick="stopRecording()">Stop Recording</button>
-          <button id="startAllButton" onclick="startAnimationAndRecording()">Start Animation and Recording</button>
-      </div>
-      <div>
-          <p id="status">Status: Recording not started</p>
-          <video id="recording" width="160" height="120" controls autoplay loop></video>
-          <br>
-          <span>After the recording is complete:</span>
-          <a id="downloadButton" href="#" download="Recording.webm">Download</a>
-      </div>
+    <h2 id="recordingHeader">Recording</h2>
+    <div class="same-row">
+      <button id="startRecButton" onclick="startRecording()">
+        Start Recording
+      </button>
+      <button id="stopRecButton" onclick="stopRecording()">
+        Stop Recording
+      </button>
+      <button id="startAllButton" onclick="startAnimationAndRecording()">
+        Start Animation and Recording
+      </button>
+      <p> </p>
+      Start Frame:
+      <input id="startFrameInput" value="0"/>
+      <p> </p>
+      End Frame:
+      <input id="endFrameInput" value="2000"/>
+      <p> </p>
+      Note: Recording only works on slow speed. 33 frames = 1 second.
+  </div>
+  <div>
+    <p id="status">Status: Recording not started</p>
+    <video id="recording" width="160" height="120"
+          controls autoplay loop></video>
+    <br/>
+    <span>
+      After the recording is complete:
+    </span>
+    <a id="downloadButton" href="#" download="Recording.webm">
+      Download
+    </a>
+  </div>
   </div>
   <script src="whammy.js"></script>
-  <script src="classes.js"></script>
-  <script src="multimag_photon.js"></script>
   <script>
     var canvas = document.getElementById('canvas');
     var ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -218,26 +235,317 @@ SOFTWARE. -->
     // const PHOTON_HEAD_COLOR = '#E1FF00';
     // const PHOTON_TAIL_COLOR = '#00FFB3';
 
+    const PHOTON_HEAD_SIZE = 0.7;
+    const PHOTON_TAIL_SIZE = 0.3;
+    const NUMBER_TRIANGLES = 6;
+    const THETA = (Math.PI) / NUMBER_TRIANGLES;
+    let ANGLE = 0;
+    let RENDER_INTERVAL_TIME = 33;
     const ORIGIN = [400, 275]; // The light source
+
+    class Magnifier {
+      constructor(mag, magSide, magView, magViewSide) {
+        this.mag = mag;
+        this.magSide = magSide;
+        this.magView = magView;
+        this.magViewSide = magViewSide;
+        this.magSquare = new Square(
+          mag[0] - magSide / 2,
+          mag[1] - magSide / 2,
+          magSide
+        );
+        this.magBox = [
+          [mag[0] - magSide / 2, mag[1] - magSide / 2],
+          [mag[0] - magSide / 2, mag[1] + magSide / 2],
+          [mag[0] + magSide / 2, mag[1] + magSide / 2],
+          [mag[0] + magSide / 2, mag[1] - magSide / 2],
+        ];
+        this.magViewBox = [
+          [magView[0] - magViewSide / 2, magView[1] - magViewSide / 2],
+          [magView[0] - magViewSide / 2, magView[1] + magViewSide / 2],
+          [magView[0] + magViewSide / 2, magView[1] + magViewSide / 2],
+          [magView[0] + magViewSide / 2, magView[1] - magViewSide / 2],
+        ];
+      }
+    
+      // Convert coordinates inside `this.mag` to scaled coordinates inside
+      // `this.magBox`.
+      translate(x, y) {
+        var dx = x - this.mag[0];
+        var dy = y - this.mag[1];
+        return [
+          this.magView[0] + (this.magViewSide / this.magSide) * dx,
+          this.magView[1] + (this.magViewSide / this.magSide) * dy,
+        ];
+      }
+    }
+    
+    // Represents a photon (light 'particle' that bounces around the room).
+    // This photon class can keep track of its positions relative to two
+    // magnifiers.
+    //
+    // Parameters:
+    //   - x: Number, the current x-position.
+    //   - y: Number, the current y-position.
+    //   - dir: Number, the current direction we are travelling in, in radians.
+    //   - collisionRadius: Number, the distance at which the centre of the photon
+    //                      must be from a line segment for a collision to occur.
+    //   - headColor: String, the color of the photon's head.
+    //   - tailColor: String, the color of the photon's tail.
+    //   - numMags: Number, the number of mags the photon needs to keep track of.
+    //
+    class MultiMagPhoton {
+      constructor(x, y, dir, speed, collisionRadius, headColor, tailColor, numMags) {
+        this.x = x;
+        this.y = y;
+        this.vecDir = new Vector(speed * Math.cos(dir), speed * Math.sin(dir));
+        this.speed = speed;
+        this.collisionRadius = collisionRadius;
+        this.headColor = headColor;
+        this.tailColor = tailColor;
+        this.contactPoints = new Array();
+        this.contactPoints.push([this.x, this.y]);
+        this.magEntry = new Array(numMags).fill(null);
+        this.lastMagPoint = new Array(numMags).fill(null);
+        this.active = true;
+      }
+    
+      deactivate() {
+        this.active = false;
+      }
+    
+      updatePosition() {
+        if (this.active) {
+          this.x += this.vecDir.x;
+          this.y += this.vecDir.y;
+        }
+      }
+    
+      // Returns whether or not the photon collides with the point (a corner).
+      checkPointCollision(px, py) {
+        if (!this.active) {
+          return false;
+        }
+        var dist = Math.hypot(this.x - px, this.y - py);
+        return dist <= Math.max(0.3, this.collisionRadius);
+      }
+    
+      // Returns whether or not the photon collides with a line segment (a wall).
+      checkLineCollision(line) {
+        if (!this.active) {
+          return false;
+        }
+        if (this.checkPointCollision(line.x1, line.y1) ||
+            this.checkPointCollision(line.x2, line.y2)) {
+          return true;
+        }
+        var vecX = this.x - line.x1;
+        var vecY = this.y - line.y1;
+        var dot = (vecX * (line.x2 - line.x1) + vecY * (line.y2 - line.y1))
+            / (line.length * line.length);
+        var closestX = line.x1 + dot * (line.x2 - line.x1);
+        var closestY = line.y1 + dot * (line.y2 - line.y1);
+        if (dot >= 0 && dot <= 1) {
+          // On the line segment.
+          var dist = Math.hypot(this.x - closestX, this.y - closestY);
+          return dist <= this.collisionRadius;
+        }
+        return false;
+      }
+    
+      // Recalculates the direction of the photon based on the normal vector to a
+      // line segment.
+      bounceOffSegment(line) {
+        if (!this.active) {
+          return;
+        }
+        var normalProj = this.vecDir.projOnto(line.normal);
+        var parallelProj = this.vecDir.sub(normalProj);
+        this.vecDir = parallelProj.sub(normalProj);
+        this.contactPoints.push([this.x, this.y]);
+      }
+    }
+
+    class Vector {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.norm = Math.hypot(x, y);
+        this.angle = Math.atan(y / x);
+      }
+    
+      // Returns the dot product with another vector.
+      dot(other) {
+        return this.x * other.x + this.y * other.y;
+      }
+    
+      // Projects this vector onto another vector.
+      projOnto(other) {
+        return other.mult(this.dot(other) / (other.norm * other.norm));
+      }
+    
+      // Returns the angle between this vector and another vector.
+      angle(other) {
+        return Math.acos(this.dot(other) / (this.norm * other.norm));
+      }
+    
+      // Negates this vector.
+      negate() {
+        return new Vector(-this.x, -this.y);
+      }
+    
+      // Adds this vector to another vector.
+      add(other) {
+        return new Vector(this.x + other.x, this.y + other.y);
+      }
+    
+      // Subtracts another vector from this vector.
+      sub(other) {
+        return new Vector(this.x - other.x, this.y - other.y);
+      }
+    
+      // Multiplies this vector by a scalar.
+      mult(scalar) {
+        return new Vector(this.x * scalar, this.y * scalar);
+      }
+    }
+    
+    // Represents a line segment in 2D space
+    //
+    class LineSegment {
+      constructor(x1, y1, x2, y2) {
+        this.x1 = x1;
+        this.y1 = y1;
+        this.x2 = x2;
+        this.y2 = y2;
+        this.dx = x2 - x1;
+        this.dy = y2 - y1;
+        this.length = Math.hypot(this.dx, this.dy); // The segment's length.
+        this.normal = new Vector(-this.dy, this.dx); // A surface normal vector.
+        this.normal = this.normal.mult(this.normal.norm);
+        this.lastBounce = -1; // ID of the last reflected wall.
+      }
+    }
+    
+    // Represents a square region in 2D space.
+    //
+    // Parameters:
+    //   - x: Number, top-left x-coordinate.
+    //   - y: Number, top-left y-coordinate.
+    //   - 
+    class Square {
+      constructor(x, y, size) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+      }
+      
+      // Returns true if the point (x, y) is in the square
+      contains(x, y) {
+        return (
+          x >= this.x &&
+          x <= this.x + this.size &&
+          y >= this.y &&
+          y <= this.y + this.size
+        );
+      }
+    }
+    
+    // Represents a photon (light 'particle' that bounces around the room)
+    //
+    // Parameters:
+    //   - x: Number, the current x-position.
+    //   - y: Number, the current y-position.
+    //   - dir: Number, the current direction we are travelling in, in radians.
+    //   - collisionRadius: Number, the distance at which the centre of the photon
+    //                      must be from a line segment for a collision to occur.
+    //
+    class Photon {
+      constructor(x, y, dir, speed, collisionRadius, headColor, tailColor) {
+        this.x = x;
+        this.y = y;
+        this.vecDir = new Vector(speed * Math.cos(dir), speed * Math.sin(dir));
+        this.speed = speed;
+        this.collisionRadius = collisionRadius;
+        this.headColor = headColor;
+        this.tailColor = tailColor;
+        this.contactPoints = new Array();
+        this.contactPoints.push([this.x, this.y]);
+        this.magEntry = null;
+        this.lastMagPoint = null;
+        this.active = true;
+      }
+    
+      deactivate() {
+        this.active = false;
+      }
+    
+      updatePosition() {
+        if (this.active) {
+          this.x += this.vecDir.x;
+          this.y += this.vecDir.y;
+        }
+      }
+    
+      // Returns whether or not the photon collides with the point (a corner).
+      checkPointCollision(px, py) {
+        if (!this.active) {
+          return false;
+        }
+        var dist = Math.hypot(this.x - px, this.y - py);
+        return dist <= Math.max(0.3, this.collisionRadius);
+      }
+    
+      // Returns whether or not the photon collides with a line segment (a wall).
+      checkLineCollision(line) {
+        if (!this.active) {
+          return false;
+        }
+        if (this.checkPointCollision(line.x1, line.y1) ||
+            this.checkPointCollision(line.x2, line.y2)) {
+          return true;
+        }
+        var vecX = this.x - line.x1;
+        var vecY = this.y - line.y1;
+        var dot = (vecX * (line.x2 - line.x1) + vecY * (line.y2 - line.y1))
+            / (line.length * line.length);
+        var closestX = line.x1 + dot * (line.x2 - line.x1);
+        var closestY = line.y1 + dot * (line.y2 - line.y1);
+        if (dot >= 0 && dot <= 1) {
+          // On the line segment.
+          var dist = Math.hypot(this.x - closestX, this.y - closestY);
+          return dist <= this.collisionRadius;
+        }
+        return false;
+      }
+    
+      // Recalculates the direction of the photon based on the normal vector to a
+      // line segment.
+      bounceOffSegment(line) {
+        if (!this.active) {
+          return;
+        }
+        var normalProj = this.vecDir.projOnto(line.normal);
+        var parallelProj = this.vecDir.sub(normalProj);
+        this.vecDir = parallelProj.sub(normalProj);
+        this.contactPoints.push([this.x, this.y]);
+      }
+    }
+
     const MAG = [
       new Magnifier(
         [400,275],  // `MAG` box centre.
         20,         // Side length of the `MAG` box.
-        [800,200],           // `magView` box centre.
+        [800,200],  // `magView` box centre.
         250,        // Side length of the `magView` box.
       ),
       new Magnifier(
         [400,525],  // `MAG` box centre.
         20,         // Side length of the `MAG` box.
-        [800,600],           // `magView` box centre.
+        [800,600],  // `magView` box centre.
         250,        // Side length of the `magView` box.
       ),
-    ]; // The point to be magnified
-
-    const NUMBER_TRIANGLES = 6;
-    const THETA = (Math.PI) / NUMBER_TRIANGLES;
-    let ANGLE = 0;
-    let RENDER_INTERVAL_TIME = 16;
+    ]; // The points to be magnified
 
     function applyColors() {
       WALL_COLOR = document.getElementById("wallColorInput").value;
@@ -403,6 +711,14 @@ SOFTWARE. -->
       });
     }
 
+    // Initialize the application
+    window.onload = function() {
+      calculateCoords();
+      applyColors();
+      changeNumRays();
+      changeSpeed();
+    };
+
     function loadBoundaries() {
       boundaries = new Array();
       for (var i = 0; i < COORDS.length; ++i) {
@@ -485,7 +801,40 @@ SOFTWARE. -->
       ctx.closePath();
     }
 
-    function drawLine(x1, y1, x2, y2, color, width = 1) {
+    function drawLine(x1, y1, x2, y2, color, width = PHOTON_TAIL_SIZE) {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    function drawLineLeftOrRight(x1, y1, x2, y2, color, width = PHOTON_TAIL_SIZE, side) {
+      // Calculate the angle of the line
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      
+      // Calculate the offset distance based on the width
+      const offset = width / 2;
+      
+      // Determine the direction of the offset
+      const dx = offset * Math.cos(angle + Math.PI / 2);
+      const dy = offset * Math.sin(angle + Math.PI / 2);
+      
+      // Adjust the coordinates based on the side
+      if (side === 'left') {
+        x1 += dx;
+        y1 += dy;
+        x2 += dx;
+        y2 += dy;
+      } else if (side === 'right') {
+        x1 -= dx;
+        y1 -= dy;
+        x2 -= dx;
+        y2 -= dy;
+      }
+    
+      // Draw the line
       ctx.beginPath();
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
@@ -526,10 +875,12 @@ SOFTWARE. -->
         if (i !== 3 && i !== 4 && i !==5 && i !== 6) {
           var nxtIdx = (i + 1) % COORDS_2.length;
           if (i !== 2 && i !== 7) { //DRAWN AT THE BOTTOM CUZ OF BUG
+          // if (true) { Try using this to understand the bug
             drawLine(COORDS_2[i][0], COORDS_2[i][1], COORDS_2[nxtIdx][0],
                 COORDS_2[nxtIdx][1], WALL_COLOR, 10);
           }
           if (i !== 7) {
+          // if (true) { Try using this to understand the bug
             drawCircle(COORDS_2[i][0], COORDS_2[i][1], 5, WALL_COLOR);
           }
           else {
@@ -550,25 +901,24 @@ SOFTWARE. -->
 
       var i = 11
       var nxtIdx_new = (i + 1) % COORDS.length;
-      drawLine(COORDS[i][0], COORDS[i][1], COORDS[nxtIdx_new][0],
-              COORDS[nxtIdx_new][1], WALL_COLOR, 5);
-      drawCircle(COORDS[nxtIdx_new][0], COORDS[nxtIdx_new][1], 2.5, WALL_COLOR);
+      drawLineLeftOrRight(COORDS[i][0]+1.25, COORDS[i][1]-2.5, COORDS[nxtIdx_new][0],
+              COORDS[nxtIdx_new][1], WALL_COLOR, 5, "right");
+      drawCircle(COORDS[nxtIdx_new][0]-3, COORDS[nxtIdx_new][1], 2.5, WALL_COLOR);
       i = 4
       nxtIdx_new = (i + 1) % COORDS_2.length;
-      drawLine(COORDS_2[i][0], COORDS_2[i][1], COORDS_2[nxtIdx_new][0],
-              COORDS_2[nxtIdx_new][1], WALL_COLOR, 5);
+      drawLineLeftOrRight(COORDS_2[i][0], COORDS_2[i][1], COORDS_2[nxtIdx_new][0]+1.25,
+              COORDS_2[nxtIdx_new][1]+2.5, WALL_COLOR, 5, "right");
 
 
       var j = 10
       var nxtIdx_new_2 = (j + 1) % COORDS.length;
-      drawLine(COORDS[j][0], COORDS[j][1], COORDS[nxtIdx_new_2][0],
-              COORDS[nxtIdx_new_2][1], WALL_COLOR, 5);
-      drawCircle(COORDS[j][0], COORDS[j][1], 2.5, WALL_COLOR);
-      drawCircle(COORDS[j][nxtIdx_new_2], COORDS[nxtIdx_new_2][1], 2.5, WALL_COLOR);
+      drawLineLeftOrRight(COORDS[j][0], COORDS[j][1], COORDS[nxtIdx_new_2][0]-1.25,
+              COORDS[nxtIdx_new_2][1]-2.5, WALL_COLOR, 5, "right");
+      drawCircle(COORDS[j][0]+3, COORDS[j][1], 2.5, WALL_COLOR);
       j = 5
       nxtIdx_new_2 = (j + 1) % COORDS_2.length;
-      drawLine(COORDS_2[j][0], COORDS_2[j][1], COORDS_2[nxtIdx_new_2][0],
-              COORDS_2[nxtIdx_new_2][1], WALL_COLOR, 5);
+      drawLineLeftOrRight(COORDS_2[j][0]-1.25, COORDS_2[j][1]+2.5, COORDS_2[nxtIdx_new_2][0],
+              COORDS_2[nxtIdx_new_2][1], WALL_COLOR, 5, "right");
 
       //DRAWN HERE CUZ OF BUG:
       drawLine(COORDS_2[2][0]+2, COORDS_2[2][1]+2, COORDS_2[3][0]+2,
@@ -607,16 +957,10 @@ SOFTWARE. -->
       }
       for (var i = 0; i < photons.length; ++i) {
         if (photons[i].active) {
-          drawCircle(photons[i].x, photons[i].y, 2, photons[i].headColor);
+          drawCircle(photons[i].x, photons[i].y, PHOTON_HEAD_SIZE, photons[i].headColor);
         }
       }
     }
-
-    // Initialize the application
-    window.onload = function() {
-        calculateCoords();
-        draw();
-    };
 
     function drawSpecialMagLines() {
       MAG.forEach((mag, index) => {
@@ -626,18 +970,19 @@ SOFTWARE. -->
 
         if (index === 0) {
           // For the first magnification box, draw lines to the bottom corners
-          const bottomLeft = [centerX - 0.6*halfSide, centerY + halfSide];
-          const bottomRight = [centerX + 0.6*halfSide, centerY + halfSide];
+          const bottomLeft = [centerX - (1/Math.sqrt(3))*halfSide, centerY + halfSide];
+          const bottomRight = [centerX + (1/Math.sqrt(3))*halfSide, centerY + halfSide];
 
-          drawLine(centerX, centerY, bottomLeft[0], bottomLeft[1], WALL_COLOR, 6);
-          drawLine(centerX, centerY, bottomRight[0], bottomRight[1], WALL_COLOR, 6);
+          drawLineLeftOrRight(centerX-1.25, centerY+2.5, bottomLeft[0]+0.75, bottomLeft[1]-1.5, WALL_COLOR, 6, "right");
+          drawLineLeftOrRight(centerX+1.25, centerY+2.5, bottomRight[0]-0.75, bottomRight[1]-1.5, WALL_COLOR, 6, "left");
+
         } else if (index === 1) {
           // For the second magnification box, draw lines to the top corners
-          const topLeft = [centerX - 0.6*halfSide, centerY - halfSide];
-          const topRight = [centerX + 0.6*halfSide, centerY - halfSide];
+          const topLeft = [centerX - (1/Math.sqrt(3))*halfSide, centerY - halfSide];
+          const topRight = [centerX + (1/Math.sqrt(3))*halfSide, centerY - halfSide];
 
-          drawLine(centerX, centerY, topLeft[0], topLeft[1], WALL_COLOR, 6);
-          drawLine(centerX, centerY, topRight[0], topRight[1], WALL_COLOR, 6);
+          drawLineLeftOrRight(centerX-1.25, centerY-2.5, topLeft[0]+0.75, topLeft[1]+1.5, WALL_COLOR, 6, "left");
+          drawLineLeftOrRight(centerX+1.25, centerY-2.5, topRight[0]-0.75, topRight[1]+1.5, WALL_COLOR, 6, "right");
         }
       });
     }
@@ -645,11 +990,16 @@ SOFTWARE. -->
     function drawMag() {
       drawSpecialMagLines();
       // Draw the circles.
-      for (var i = 0; i < MAG.length; ++i) {
-        drawCircle(MAG[i].magView[0], MAG[i].magView[1], 3, MAG_COLOR);
-        drawCircle(MAG[i].magView[0], MAG[i].magView[1], 1.5,
+      i=0
+      //for (var i = 0; i < MAG.length; ++i) {
+        drawCircle(MAG[i].magView[0], MAG[i].magView[1]+5, 3, MAG_COLOR);
+        drawCircle(MAG[i].magView[0], MAG[i].magView[1]+5, 1.5,
             BACKGROUND_COLOR);
-      }
+      //}
+      i=1
+        drawCircle(MAG[i].magView[0], MAG[i].magView[1]-5, 3, MAG_COLOR);
+        drawCircle(MAG[i].magView[0], MAG[i].magView[1]-5, 1.5,
+            BACKGROUND_COLOR);
       // Draw lines from past photons.
       for (var i = 0; i < magLines.length; ++i) {
         drawLine(
