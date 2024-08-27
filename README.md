@@ -4,7 +4,7 @@ Double Star is an interactive web-based application that simulates light rays bo
 
 ## Theory
 
-TODO
+Double Star created using 20 isosceles triangles ABC with A=30=B, C=120. This figure has 2 unilluminable points. When rays of light is shot from one of these points in all directions, it would never return back either of them but illuminate the rest of the room completely. It is as if you're standing at one of these points with a lamp, an observer can see everything in the room except for you and the other point! This works using the implementation of right triangles, as my supervisor George Tokarsky first theorized in 1995 to create the first-ever un-illuminable room!
 
 ## Features
 
@@ -21,8 +21,8 @@ https://b1805.github.io/double_star/
 
 1. Clone the repository:
    ```sh
-   git clone https://github.com/b1805/star_customizer
-   cd custom-star-room-illumination
+   git clone https://github.com/b1805/double_star
+   cd double-star
    ```
 
 2. Open `index.html` in your web browser to run the application.
@@ -30,7 +30,7 @@ https://b1805.github.io/double_star/
 ## Usage
 
 1. **Controls:**
-   - Adjust the number of triangles and light rays using the respective input fields and apply the changes.
+   - Adjust the number of light rays using the respective input field and apply the changes.
    - Select the desired speed from the dropdown menu and apply.
    - Change colors for walls, photon head, photon tail, and magnifier using the color pickers and apply.
   
