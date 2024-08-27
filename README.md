@@ -49,10 +49,13 @@ https://b1805.github.io/double_star/
 - `index.html`: Main HTML file containing the structure and interface of the application.
 - `whammy.js`: Library for creating video from canvas frames.
 - `classes.js`: Contains classes for managing light rays (photons) and line segments.
+- `script.js`
+- `style.css`
+- `multimag.js`
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/b1805/star_customizer/blob/main/LICENCE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/b1805/double_star/blob/main/LICENCE) file for details.
 
 ## Contributing
 
