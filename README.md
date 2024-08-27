@@ -4,7 +4,7 @@ Double Star is an interactive web-based application that simulates light rays bo
 
 ## Theory
 
-Double Star created using 20 isosceles triangles ABC with A=30=B, C=120. This figure has 2 unilluminable points. When rays of light is shot from one of these points in all directions, it would never return back either of them but illuminate the rest of the room completely. It is as if you're standing at one of these points with a lamp, an observer can see everything in the room except for you and the other point! This works using the implementation of right triangles, as my supervisor George Tokarsky first theorized in 1995 to create the first-ever un-illuminable room!
+Double Star created using 20 isosceles triangles ABC with A=30=B, C=120. This figure has 2 unilluminable points. When rays of light are shot from one of these points in all directions, it would never return back either of them but illuminate the rest of the room completely. It is as if you're standing at one of these points with a lamp, an observer can see everything in the room except for you and the other point! This works using the implementation of right triangles, as my supervisor George Tokarsky first theorized in 1995 to create the first-ever un-illuminable room!
 
 ## Features
 
