@@ -1,4 +1,4 @@
-<!-- MIT License
+/* MIT License
 
 Copyright (c) 2024 Bhavya Jain
 
@@ -18,112 +18,97 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. -->
+SOFTWARE. */
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Double Star</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body onload="draw()">
-  <div class="container">
-    <div class="flex-container">
-      <h1>Double Star</h1>
-    </div>
-  </div>
-  <div class="container">
-      <div class="flex-container">
-          <div class="flex-item">
-              <h2>Controls</h2>
-              <div>
-                <label for="numRaysInput">Number of Light Rays (1 to 800)</label>
-                <input type="number" id="numRaysInput" min="1" max="800" value="600">
-                <button onclick="changeNumRays()">Apply</button>
-              </div>
-              <p> </p>
-              <div>
-                  <label for="speedInput">Speed</label>
-                  <select id="speedInput">
-                      <option value="33">Slow</option>
-                      <option value="16">Medium</option>
-                      <option value="0">Fast</option>
-                  </select>
-                  <button onclick="changeSpeed()">Apply</button>
-              </div>
-              <h2>Animation</h2>
-              <button id="startAnimButton" onclick="startAnimation()">Start Animation</button>
-              <button id="stopAnimButton" onclick="stopAnimation()">Stop Animation</button>
-              <div>
-                <h2>Photon Counter</h2>
-                <p>Active Photons: <span id="activePhotonCount">0</span></p>
-              </div>
-          </div>
-          <div class="flex-item">
-              <h2>Colours</h2>
-              <div>
-                  <label for="wallColorInput">Wall Colour</label>
-                  <input type="color" id="wallColorInput" value="#39FF14">
-              </div>
-              <div>
-                  <label for="photonHeadColorInput">Photon Head Colour</label>
-                  <input type="color" id="photonHeadColorInput" value="#E1FF00">
-              </div>
-              <div>
-                  <label for="photonTailColorInput">Photon Tail Colour</label>
-                  <input type="color" id="photonTailColorInput" value="#00FFB3">
-              </div>
-              <div>
-                  <label for="magnifierColorInput">Magnifier Colour</label>
-                  <input type="color" id="magnifierColorInput" value="#FF0000">
-              </div>
-              <p> </p>
-              <button onclick="applyColors()">Apply Colours</button>
-          </div>
-      </div>
-  </div>
-  <div class="container">
-      <canvas id="canvas" width="1000" height="800"></canvas>
-  </div>
-  <div class="container">
-    <h2 id="recordingHeader">Recording</h2>
-    <div class="same-row">
-      <button id="startRecButton" onclick="startRecording()">
-        Start Recording
-      </button>
-      <button id="stopRecButton" onclick="stopRecording()">
-        Stop Recording
-      </button>
-      <button id="startAllButton" onclick="startAnimationAndRecording()">
-        Start Animation and Recording
-      </button>
-      <p> </p>
-      Start Frame:
-      <input id="startFrameInput" value="0"/>
-      <p> </p>
-      End Frame:
-      <input id="endFrameInput" value="2000"/>
-      <p> </p>
-      Note: Recording only works on slow speed. 33 frames = 1 second.
-  </div>
-  <div>
-    <p id="status">Status: Recording not started</p>
-    <video id="recording" width="160" height="120"
-          controls autoplay loop></video>
-    <br/>
-    <span>
-      After the recording is complete:
-    </span>
-    <a id="downloadButton" href="#" download="Recording.webm">
-      Download
-    </a>
-  </div>
-  </div>
-  <script src="whammy.js"></script>
-  <script src="multimag.js"></script>
-  <script src="classes.js"></script>
-  <script src="script.js"></script>
-</body>
-</html>
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 1850px;
+    margin: 20px auto;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    font-size: 25px;
+    font-family: cursive;
+    text-align: center;
+    color: red;
+}
+
+h2 {
+    font-size: 20px;
+    font-family: cursive;
+    margin-bottom: 10px;
+    color: #1877f2;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+input[type="number"],
+select,
+input[type="color"] {
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: calc(100% - 18px);
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #1877f2;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #115293;
+}
+
+.flex-container {
+    width: 1850px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.flex-item {
+    flex: 1;
+    margin-right: 10px;
+}
+
+input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    padding: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+#startAnimButton, #stopAnimButton, #startRecButton, #stopRecButton, #startAllButton {
+    background-color: #42b72a;
+    margin-top: 10px;
+}
+
+#startAnimButton:hover, #stopAnimButton:hover, #startRecButton:hover, #stopRecButton:hover, #startAllButton:hover {
+    background-color: #339a1e;
+}
